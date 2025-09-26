@@ -1,0 +1,186 @@
+제ㅡ중<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>체험단 제출</title>
+  <style>
+    :root {
+      --bg: #0e0f12;
+      --card: #15171c;
+      --muted: #9aa3af;
+      --text: #f3f4f6;
+      --accent: #22d36a; /* 네온 그린 */
+      --accent-2: #2ee6a1;
+      --danger: #ff5b5b;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; }
+    .wrap { max-width: 440px; margin: 28px auto 40px; padding: 0 16px; }
+    .hero { background: linear-gradient(180deg, rgba(34,211,106,0.1), rgba(34,211,106,0) 60%); padding: 18px 0 8px; text-align: left; }
+    .badge { display: inline-block; padding: 6px 10px; border: 1px solid rgba(34,211,106,0.45); color: var(--accent); border-radius: 999px; font-size: 12px; letter-spacing: .4px; }
+    h1 { margin: 10px 0 2px; font-size: 22px; letter-spacing: .2px; }
+    .subtitle { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
+
+    .campaign { margin: 16px 0; padding: 12px 14px; background: var(--card); border: 1px solid #1d2128; border-radius: 10px; font-weight: 700; color: var(--accent); }
+
+    .card { background: var(--card); border: 1px solid #1d2128; border-radius: 12px; padding: 16px; box-shadow: 0 10px 24px rgba(0,0,0,.25); }
+    label { display: block; margin: 12px 0 6px; font-weight: 700; font-size: 13px; color: #e5e7eb; }
+    input[type="text"], input[type="tel"], input[type="url"] {
+      width: 100%; padding: 12px 12px; font-size: 15px; border-radius: 10px; border: 1px solid #242933; background: #0f1116; color: var(--text);
+      outline: none; transition: border-color .2s, box-shadow .2s;
+    }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(34,211,106,.15); }
+    .hint { margin: 4px 0 10px; color: var(--muted); font-size: 12px; }
+    .actions { margin-top: 12px; }
+    button#submitBtn {
+      width: 100%; padding: 12px; font-size: 16px; border-radius: 10px; border: none; font-weight: 800; letter-spacing: .3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2)); color: #02140a; cursor: pointer; box-shadow: 0 8px 18px rgba(34,211,106,.25);
+      transition: transform .06s ease-in-out, filter .2s;
+    }
+    button#submitBtn:active { transform: translateY(1px); }
+    #msg.error { color: var(--danger); margin-top: 8px; }
+    #msg.success { color: var(--accent); margin-top: 8px; }
+
+    #successContainer { text-align: center; padding: 28px 12px; background: var(--card); border: 1px solid #1d2128; border-radius: 12px; }
+    #successContainer h3 { color: var(--accent); font-size: 20px; margin: 0 0 6px; }
+    #successContainer p { color: var(--text); opacity: .9; margin: 0; }
+
+    /* 로딩 오버레이 */
+    .loading {
+      display: none;
+      position: fixed; inset: 0; background: rgba(0,0,0,.45); backdrop-filter: blur(2px);
+      align-items: center; justify-content: center; z-index: 9999;
+    }
+    .spinner {
+      width: 44px; height: 44px; border-radius: 999px; border: 4px solid rgba(255,255,255,.18);
+      border-top-color: var(--accent); animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+  <!-- TODO: 아래 CAMPAIGN_NAME_FIXED, WEB_APP_URL 값을 실제 값으로 바꾸세요. -->
+
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <span class="badge">GR-EAT 체험단</span>
+      <h1>운동 전후, 연료 충전</h1>
+      <p class="subtitle" id="campaignTitle"></p>
+    </section>
+
+    <!-- 캠페인명 표시 카드 -->
+    <div id="campaignDisplay" class="campaign"></div>
+
+    <!-- 고정 캠페인 이름 (사용자 비노출) -->
+    <input type="hidden" id="campaignName_fixed" value="테팔_라이트믹스"/>
+
+    <div id="formContainer" class="card" style="margin-top:12px;">
+      <label for="name">이름</label>
+      <input id="name" type="text" placeholder="홍길동" required/>
+
+      <label for="phone">휴대폰 번호</label>
+      <input id="phone" type="tel" inputmode="numeric" placeholder="01012345678" required/>
+      <div class="hint">하이픈 없이 숫자만 입력</div>
+
+      <label for="url">인스타그램 URL</label>
+      <input id="url" type="url" placeholder="https://www.instagram.com/p/..." required/>
+      <div class="hint">게시물/릴스 링크를 붙여넣기 해주세요.</div>
+
+      <div class="actions">
+        <button id="submitBtn">제출하기</button>
+      </div>
+      <div id="msg"></div>
+    </div>
+
+  <!-- 제출 성공 화면 -->
+    <div id="successContainer" style="display:none;">
+      <h3 style="margin-top:0;">제출이 완료되었습니다!</h3>
+      <p>소중한 시간 내어 체험단 활동에 참여해주셔서 감사합니다.</p>
+    </div>
+
+    <!-- 로딩 오버레이 -->
+    <div class="loading" id="loadingOverlay">
+      <div class="spinner"></div>
+    </div>
+
+  <script>
+    // 앱스 스크립트 배포 후 복사한 웹앱 URL로 교체하세요
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyMEVKRb6UWIVueL8XffHOlqLBsloPaL3NAauilv-zY-MCC2d2SRdyPUVbmznRuJ74/exec';
+
+    const validPhone = p => /^01[016789]\d{7,8}$/.test((p||'').replace(/\s|-/g,''));
+    const validInstagram = u => /^https?:\/\/(www\.)?instagram\.com\/.+/i.test(u||'');
+
+    // 캠페인명 상단 표시
+    (function renderCampaignName(){
+      const val = document.getElementById('campaignName_fixed').value;
+      document.getElementById('campaignTitle').textContent = `현재 캠페인 · ${val}`;
+      const box = document.getElementById('campaignDisplay');
+      box.textContent = `체험단: ${val}`;
+    })();
+
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+      const msg = document.getElementById('msg');
+      msg.className = ''; msg.textContent = '';
+
+      const campaignName = document.getElementById('campaignName_fixed').value.trim();
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const url = document.getElementById('url').value.trim();
+
+      if (!campaignName || !name || !phone || !url) {
+        msg.textContent = '필수 항목을 모두 입력해주세요.'; msg.className = 'error'; return;
+      }
+      if (!validPhone(phone)) {
+        msg.textContent = '휴대폰 번호 형식이 올바르지 않습니다.'; msg.className = 'error'; return;
+      }
+      if (!validInstagram(url)) {
+        msg.textContent = '인스타그램 URL 형식을 확인해주세요.'; msg.className = 'error'; return;
+      }
+
+      try {
+        // 로딩 on
+        const overlay = document.getElementById('loadingOverlay');
+        overlay.style.display = 'flex';
+        // CORS preflight 회피: 폼 URL-인코딩으로 전송 (헤더 커스텀 없음)
+        const params = new URLSearchParams({ campaignName, name, phone, url });
+        const res = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+          body: params.toString()
+        });
+        const ct = res.headers.get('content-type') || '';
+        let data;
+        if (ct.includes('application/json')) {
+          data = await res.json();
+        } else {
+          const text = await res.text();
+          // JSON 아님: 원문 노출
+          msg.textContent = `서버 응답(${res.status}): ${text.slice(0, 300)}`;
+          msg.className = 'error';
+          overlay.style.display = 'none';
+          return;
+        }
+
+        if (data && data.ok) {
+          // 완료 화면 표시
+          document.getElementById('formContainer').style.display = 'none';
+          document.getElementById('successContainer').style.display = 'block';
+        } else {
+          const reason = (data && (data.message || data.error || data.reason)) || '제출에 실패했습니다.';
+          msg.textContent = reason;
+          msg.className = 'error';
+        }
+      } catch {
+        msg.textContent = '네트워크 오류가 발생했습니다.'; msg.className = 'error';
+      } finally {
+        const overlay = document.getElementById('loadingOverlay');
+        overlay.style.display = 'none';
+      }
+    });
+  </script>
+  </div>
+</body>
+</html>
+
+
